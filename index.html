@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor</title>
+<title>WC 2026 Predictor v5</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -262,9 +265,64 @@ const FLAGS = {
   "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
   "Portugal":"🇵🇹","Congo DR":"🇨🇩","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷",
   "Ghana":"🇬🇭","Panama":"🇵🇦","Uzbekistan":"🇺🇿","Colombia":"🇨🇴",
+  "Bosnia & Herz.":"🇧🇦","Cape Verde":"🇨🇻","Ivory Coast":"🇨🇮","Curaçao":"🇨🇼","Congo DR":"🇨🇩","South Korea":"🇰🇷","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
 };
 const flag = t => FLAGS[t] || "🏳️";
+// Check for missing flags
+const MISSING = [...GROUP_MATCHES,...[]].map(m=>[m.home,m.away]).flat().filter(t=>!FLAGS[t]);
+if(MISSING.length) console.warn("Missing flags:", [...new Set(MISSING)]);
 const ADMIN_PW = "ronaldo";
+const FD_TOKEN = "488ca541cbf247b3953ce892dc9a0f11";
+
+// ── FOOTBALL-DATA.ORG AUTO RESULTS ───────────────────────────────────────────
+async function fetchAndUpdateResults() {
+  try {
+    // Use allorigins proxy to bypass CORS on free tier
+    const url = `https://api.football-data.org/v4/competitions/WC/matches?season=2026&status=FINISHED`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const resp = await fetch(proxyUrl, {
+      headers: { "X-Auth-Token": FD_TOKEN }
+    });
+    if (!resp.ok) return;
+    const outer = await resp.json();
+    const data = JSON.parse(outer.contents);
+    if (!data.matches || !data.matches.length) return;
+
+    let updated = false;
+    for (const m of data.matches) {
+      if (m.status !== "FINISHED") continue;
+      const homeGoals = m.score?.fullTime?.home;
+      const awayGoals = m.score?.fullTime?.away;
+      if (homeGoals === null || homeGoals === undefined) continue;
+
+      // Match by team names against our schedule
+      const homeName = m.homeTeam?.name || "";
+      const awayName = m.awayTeam?.name || "";
+      const match = allMatches().find(gm =>
+        (gm.home.toLowerCase().includes(homeName.split(" ")[0].toLowerCase()) ||
+         homeName.toLowerCase().includes(gm.home.split(" ")[0].toLowerCase())) &&
+        (gm.away.toLowerCase().includes(awayName.split(" ")[0].toLowerCase()) ||
+         awayName.toLowerCase().includes(gm.away.split(" ")[0].toLowerCase()))
+      );
+      if (!match) continue;
+      const mid = String(match.id);
+      const newRes = {h: String(homeGoals), a: String(awayGoals)};
+      // Only update if result changed
+      if (!S.results[mid] ||
+          S.results[mid].h !== newRes.h ||
+          S.results[mid].a !== newRes.a) {
+        S.results[mid] = newRes;
+        updated = true;
+      }
+    }
+    if (updated) {
+      await fbSet("wc26/results", {data: S.results});
+      console.log("Results auto-updated from API");
+    }
+  } catch(e) {
+    console.warn("API fetch failed, using manual results:", e.message);
+  }
+}
 
 // ── PRE-SEEDED DATA ───────────────────────────────────────────────────────────
 const SEED_USERS = {
@@ -280,12 +338,16 @@ const SEED_RESULTS = {
   "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay
   "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland
   "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco
+  "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador
+  "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia
+  "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde
+  "14": {h:"7",a:"4"},  // Belgium 7-4 Egypt
 };
 
 const SEED_PREDICTIONS = {
-  erdi: { "1":{h:"2",a:"1"}, "2":{h:"0",a:"2"}, "3":{h:"0",a:"0"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"2"}, "6":{h:"4",a:"0"} },
-  joni: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"0"}, "3":{h:"1",a:"2"}, "4":{h:"2",a:"2"}, "5":{h:"0",a:"3"}, "6":{h:"3",a:"1"} },
-  xani: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"2"}, "3":{h:"0",a:"2"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"4"}, "6":{h:"3",a:"0"} },
+  erdi: { "1":{h:"2",a:"1"}, "2":{h:"0",a:"2"}, "3":{h:"0",a:"0"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"2"}, "6":{h:"4",a:"0"}, "11":{h:"1",a:"0"}, "12":{h:"2",a:"0"}, "13":{h:"2",a:"0"}, "14":{h:"2",a:"0"} },
+  joni: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"0"}, "3":{h:"1",a:"2"}, "4":{h:"2",a:"2"}, "5":{h:"0",a:"3"}, "6":{h:"3",a:"1"}, "11":{h:"1",a:"3"}, "12":{h:"2",a:"0"}, "13":{h:"7",a:"0"}, "14":{h:"3",a:"1"} },
+  xani: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"2"}, "3":{h:"0",a:"2"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"4"}, "6":{h:"3",a:"0"}, "11":{h:"2",a:"1"}, "12":{h:"3",a:"2"}, "13":{h:"5",a:"0"}, "14":{h:"2",a:"1"} },
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -316,8 +378,11 @@ function calcPoints(uid) {
     if (!res) continue;
     const pw = winner(pred.h, pred.a);
     const rw = winner(res.h, res.a);
-    if (pw === rw) {
-      pts += (String(pred.h)===String(res.h) && String(pred.a)===String(res.a)) ? 7 : 3;
+    const exactScore = String(pred.h)===String(res.h) && String(pred.a)===String(res.a);
+    if (exactScore) {
+      pts += 7; // exact score = 7 pts total (not 3+7)
+    } else if (pw === rw) {
+      pts += 3; // correct winner/draw only = 3 pts
     }
   }
   return pts + (S.bonuses[uid] || 0);
@@ -401,11 +466,13 @@ async function init() {
   await fbSet("wc26/predictions", SEED_PREDICTIONS);
   await fbSet("wc26/results", {data: SEED_RESULTS});
   const saved = sessionStorage.getItem("wc26_user");
-  // Wait briefly for listeners to fire
-  setTimeout(() => {
+  // Wait briefly for listeners to fire then fetch API results
+  setTimeout(async () => {
     if(saved && S.users[saved]) { S.me=saved; S.screen="app"; }
     else S.screen="login";
     render();
+    // Silently fetch latest results from API in background
+    await fetchAndUpdateResults();
   }, 1500);
 }
 
@@ -435,17 +502,20 @@ function logout(){
 }
 async function saveAllPredictions() {
   const day = S.matchDay === "tomorrow" ? tomorrowStr() : todayStr();
-  const matches = matchesForDay(day).filter(m=>!S.predictions[S.me]?.[m.id]);
-  let saved=0;
-  for(const m of matches){
-    const inp=S.scoreInputs[m.id];
-    if(!inp||inp.h===""||inp.a==="") continue;
-    if(!S.predictions[S.me]) S.predictions[S.me]={};
-    S.predictions[S.me][m.id]={h:inp.h,a:inp.a};
+  // Only save for matches that haven't started and haven't been predicted yet
+  const matches = matchesForDay(day).filter(m =>
+    !S.predictions[S.me]?.[m.id] && !matchKickoffPassed(m)
+  );
+  let saved = 0;
+  for (const m of matches) {
+    const inp = S.scoreInputs[m.id];
+    if (!inp || inp.h==="" || inp.a==="") continue;
+    if (!S.predictions[S.me]) S.predictions[S.me] = {};
+    S.predictions[S.me][m.id] = {h: inp.h, a: inp.a};
     saved++;
   }
-  if(!saved){toast("Fill in at least one score first");return;}
-  await fbSet("wc26/predictions",S.predictions);
+  if (!saved) { toast("Fill in at least one score first"); return; }
+  await fbSet("wc26/predictions", S.predictions);
   toast(`${saved} prediction${saved>1?"s":""} submitted! ✅`);
   render();
 }
@@ -570,20 +640,29 @@ function renderToday() {
 }
 
 function renderMatchCard(m) {
-  const pred=S.predictions[S.me]?.[m.id];
-  const locked=!!pred;
-  const res=S.results[m.id];
-  const inp=S.scoreInputs[m.id]||{h:"",a:""};
+  const pred = S.predictions[S.me]?.[m.id];
+  const kicked = matchKickoffPassed(m);
+  const locked = !!pred || kicked; // locked if predicted OR already started
+  const res = S.results[m.id];
+  const inp = S.scoreInputs[m.id] || {h:"",a:""};
+  const dateLabel = m.date===todayStr() ? "📅 Today" : "📅 "+new Date(m.date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  const kickoffLabel = m.kickoff || "";
+
+  let statusText = "";
+  let statusClass = "";
+  if (res) { statusText = "✓ Result in"; statusClass = "result"; }
+  else if (pred) { statusText = "🔒 Predicted"; statusClass = "locked"; }
+  else if (kicked) { statusText = "⏱ Started"; statusClass = "locked"; }
+  else { statusText = `⏰ ${kickoffLabel} CET`; statusClass = ""; }
+
   return `
   <div class="match-card ${locked?"locked":""}">
     <div class="match-header">
       <div style="display:flex;align-items:center;gap:8px">
         <span class="group-tag">Group ${m.group}</span>
-        <span style="font-size:11px;color:var(--muted);font-weight:600">${m.date===todayStr()?"📅 Today":"📅 "+new Date(m.date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:600">${dateLabel}</span>
       </div>
-      <span class="match-status ${res?"result":locked?"locked":""}">
-        ${res?"✓ Result in":locked?"🔒 Locked":""}
-      </span>
+      <span class="match-status ${statusClass}">${statusText}</span>
     </div>
     <div class="teams-row">
       <div class="team"><div class="team-flag">${flag(m.home)}</div><div class="team-name">${m.home}</div></div>
@@ -591,12 +670,17 @@ function renderMatchCard(m) {
       <div class="team"><div class="team-flag">${flag(m.away)}</div><div class="team-name">${m.away}</div></div>
     </div>
     ${locked
-      ?`<div class="pred-display">
-          <div class="pred-label">Your prediction</div>
-          <div class="pred-score my">${pred.h} — ${pred.a}</div>
-          ${res?`<div class="pred-label" style="margin-top:10px">Final score</div><div class="pred-score actual">${res.h} — ${res.a}</div>`:""}
+      ? `<div class="pred-display">
+          ${pred
+            ? `<div class="pred-label">Your prediction</div>
+               <div class="pred-score my">${pred.h} — ${pred.a}</div>`
+            : `<div class="pred-label" style="color:#f87171">⛔ Match started — no prediction entered</div>`}
+          ${res
+            ? `<div class="pred-label" style="margin-top:10px">Final score</div>
+               <div class="pred-score actual">${res.h} — ${res.a}</div>`
+            : ""}
         </div>`
-      :`<div class="score-row">
+      : `<div class="score-row">
           <input class="score-input" type="number" min="0" max="20" placeholder="0" value="${inp.h}" data-mid="${m.id}" data-side="h"/>
           <span class="score-dash">—</span>
           <input class="score-input" type="number" min="0" max="20" placeholder="0" value="${inp.a}" data-mid="${m.id}" data-side="a"/>
@@ -612,10 +696,10 @@ function renderHistory() {
     let outcome="pending",pts=0;
     if(res){
       const pw=winner(pred.h,pred.a), rw=winner(res.h,res.a);
-      if(pw===rw){
-        pts=(String(pred.h)===String(res.h)&&String(pred.a)===String(res.a))?7:3;
-        outcome=pts===7?"exact":"correct";
-      } else outcome="wrong";
+      const exactScore=String(pred.h)===String(res.h)&&String(pred.a)===String(res.a);
+      if(exactScore){ pts=7; outcome="exact"; }
+      else if(pw===rw){ pts=3; outcome="correct"; }
+      else outcome="wrong";
     }
     return {mid,match,pred,res,outcome,pts};
   }).sort((a,b)=>(b.match?.date||"")>(a.match?.date||"")?1:-1);
