@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v10</title>
+<title>WC 2026 Predictor v11</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -145,7 +145,7 @@
 <div id="root"></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDkMTxzXTTqrvPRx59-eQZ7-jyBQnycMyc",
@@ -535,14 +535,30 @@ async function init() {
   await fbSet("wc26/users", SEED_USERS);
   await fbSet("wc26/results", {data: SEED_RESULTS});
 
-  // Seed predictions — but first clean up matches 25,26,27,28 from erdi & joni
-  // (xani didn't predict those, removing to equalise match count)
+  // Build cleaned predictions — remove matches 25,26,27,28 from ALL users
+  // (Czechia/SA, Switzerland/Bosnia, Canada/Qatar, Mexico/SouthKorea)
+  // Xani never predicted these, removing from everyone to equalise match count
   const REMOVE_MIDS = ["25","26","27","28"];
   const cleanedPreds = JSON.parse(JSON.stringify(SEED_PREDICTIONS));
-  ["erdi","joni"].forEach(uid => {
-    REMOVE_MIDS.forEach(mid => { delete cleanedPreds[uid]?.[mid]; });
+  Object.keys(cleanedPreds).forEach(uid => {
+    REMOVE_MIDS.forEach(mid => { delete cleanedPreds[uid][mid]; });
   });
   await fbSet("wc26/predictions", cleanedPreds);
+  // Also read live Firebase predictions and strip those matches too
+  const liveSnap = await getDoc(doc(db,"wc26","predictions"));
+  if (liveSnap.exists()) {
+    const livePreds = liveSnap.data();
+    let changed = false;
+    Object.keys(livePreds).forEach(uid => {
+      REMOVE_MIDS.forEach(mid => {
+        if (livePreds[uid]?.[mid]) { delete livePreds[uid][mid]; changed = true; }
+      });
+    });
+    if (changed) {
+      await setDoc(doc(db,"wc26","predictions"), livePreds);
+      console.log("✅ Removed matches 25,26,27,28 from all users in Firebase");
+    }
+  }
   const saved = sessionStorage.getItem("wc26_user");
   // Wait briefly for listeners to fire then fetch API results
   setTimeout(async () => {
