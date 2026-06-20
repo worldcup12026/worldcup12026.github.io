@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v8</title>
+<title>WC 2026 Predictor v9</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -363,30 +363,48 @@ const SEED_USERS = {
 };
 
 const SEED_RESULTS = {
-  "1":  {h:"2",a:"0"},  // Mexico 2-0 South Africa
-  "2":  {h:"2",a:"1"},  // South Korea 2-1 Czechia
-  "3":  {h:"1",a:"1"},  // Canada 1-1 Bosnia
-  "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay
-  "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland
-  "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco
-  "7":  {h:"0",a:"1"},  // Haiti 0-1 Scotland
-  "8":  {h:"2",a:"0"},  // Australia 2-0 Türkiye
-  "9":  {h:"7",a:"1"},  // Germany 7-1 Curaçao
-  "10": {h:"2",a:"2"},  // Netherlands 2-2 Japan
-  "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador
-  "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia
-  "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde
-  "14": {h:"1",a:"1"},  // Belgium 1-1 Egypt FIXED
-  "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay
-  "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand
-  "17": {h:"3",a:"1"},  // France 3-1 Senegal
-  "18": {h:"1",a:"4"},  // Iraq 1-4 Norway
-  "19": {h:"3",a:"0"},  // Argentina 3-0 Algeria
-  "20": {h:"3",a:"1"},  // Austria 3-1 Jordan
-  "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR
-  "22": {h:"4",a:"2"},  // England 4-2 Croatia
-  "23": {h:"1",a:"0"},  // Ghana 1-0 Panama
-  "24": {h:"1",a:"3"},  // Uzbekistan 1-3 Colombia
+  // June 11
+  "1":  {h:"2",a:"0"},  // Mexico 2-0 South Africa ✓
+  "2":  {h:"2",a:"1"},  // South Korea 2-1 Czechia ✓
+  // June 12
+  "3":  {h:"1",a:"1"},  // Canada 1-1 Bosnia ✓
+  "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay ✓
+  // June 13
+  "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland ✓
+  "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco ✓
+  "7":  {h:"0",a:"1"},  // Haiti 0-1 Scotland ✓
+  "8":  {h:"2",a:"0"},  // Australia 2-0 Türkiye ✓
+  // June 14
+  "9":  {h:"7",a:"1"},  // Germany 7-1 Curaçao ✓
+  "10": {h:"2",a:"2"},  // Netherlands 2-2 Japan ✓
+  "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador ✓
+  "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia ✓
+  // June 15
+  "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde ✓
+  "14": {h:"1",a:"1"},  // Belgium 1-1 Egypt ✓
+  "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay ✓
+  "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand ✓
+  // June 16
+  "17": {h:"3",a:"1"},  // France 3-1 Senegal ✓
+  "18": {h:"1",a:"4"},  // Iraq 1-4 Norway ✓
+  "19": {h:"3",a:"0"},  // Argentina 3-0 Algeria ✓
+  "20": {h:"3",a:"1"},  // Austria 3-1 Jordan ✓
+  // June 17
+  "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR ✓
+  "22": {h:"4",a:"2"},  // England 4-2 Croatia ✓
+  "23": {h:"1",a:"0"},  // Ghana 1-0 Panama ✓
+  "24": {h:"1",a:"3"},  // Uzbekistan 1-3 Colombia ✓
+  // June 18
+  "25": {h:"1",a:"1"},  // Czechia 1-1 South Africa ✓
+  "26": {h:"4",a:"1"},  // Switzerland 4-1 Bosnia & Herz. ✓
+  "27": {h:"6",a:"0"},  // Canada 6-0 Qatar ✓
+  "28": {h:"1",a:"0"},  // Mexico 1-0 South Korea ✓
+  // June 19 — matches played today, API will update
+  "29": {h:"0",a:"1"},  // Scotland 0-1 Morocco ✓
+  "30": {h:"2",a:"0"},  // USA 2-0 Australia ✓
+  "31": {h:"3",a:"0"},  // Brazil 3-0 Haiti ✓
+  "32": {h:"0",a:"1"},  // Türkiye 0-1 Paraguay ✓
+  // June 20 — not played yet, API will fill in
 };
 
 const SEED_PREDICTIONS = {
