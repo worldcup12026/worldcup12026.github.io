@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v9</title>
+<title>WC 2026 Predictor v10</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -411,11 +411,13 @@ const SEED_PREDICTIONS = {
   erdi: { "1":{h:"2",a:"1"}, "2":{h:"0",a:"2"}, "3":{h:"0",a:"0"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"2"}, "6":{h:"4",a:"0"}, "11":{h:"1",a:"0"}, "12":{h:"2",a:"0"}, "13":{h:"2",a:"0"}, "14":{h:"2",a:"0"} },
   joni: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"0"}, "3":{h:"1",a:"2"}, "4":{h:"2",a:"2"}, "5":{h:"0",a:"3"}, "6":{h:"3",a:"1"}, "11":{h:"1",a:"3"}, "12":{h:"2",a:"0"}, "13":{h:"7",a:"0"}, "14":{h:"3",a:"1"} },
   xani: { "1":{h:"3",a:"1"}, "2":{h:"2",a:"2"}, "3":{h:"0",a:"2"}, "4":{h:"1",a:"0"}, "5":{h:"0",a:"4"}, "6":{h:"3",a:"0"}, "11":{h:"2",a:"1"}, "12":{h:"3",a:"2"}, "13":{h:"5",a:"0"}, "14":{h:"2",a:"1"} },
+  // Note: matches 25,26,27,28 (June 18 - Czechia/SA, Swiss/Bosnia, Canada/Qatar, Mexico/SKorea)
+  // removed from erdi & joni seed as xani did not predict those — equalizing match count
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let S = {
-  screen:"loading", tab:"today", me:null, matchDay:"today",
+  screen:"loading", tab:"today", me:null, matchDay:"today", picksInputs:{scorers:["","",""],team:""}, picks:{},
   users:{}, predictions:{}, results:{}, bonuses:{}, knockoutMatches:[],
   adminUnlocked:false, adminPwInput:"", adminPwErr:false,
   authForm:{u:"",p:""}, authErr:"",
@@ -525,10 +527,22 @@ async function init() {
     if(snap.exists()) S.knockoutMatches=snap.data().matches||[]; else S.knockoutMatches=[];
     render();
   });
+  onSnapshot(doc(db,"wc26","picks"), snap => {
+    if(snap.exists()) S.picks=snap.data(); else S.picks={};
+    render();
+  });
   // Always seed data then show login
   await fbSet("wc26/users", SEED_USERS);
-  await fbSet("wc26/predictions", SEED_PREDICTIONS);
   await fbSet("wc26/results", {data: SEED_RESULTS});
+
+  // Seed predictions — but first clean up matches 25,26,27,28 from erdi & joni
+  // (xani didn't predict those, removing to equalise match count)
+  const REMOVE_MIDS = ["25","26","27","28"];
+  const cleanedPreds = JSON.parse(JSON.stringify(SEED_PREDICTIONS));
+  ["erdi","joni"].forEach(uid => {
+    REMOVE_MIDS.forEach(mid => { delete cleanedPreds[uid]?.[mid]; });
+  });
+  await fbSet("wc26/predictions", cleanedPreds);
   const saved = sessionStorage.getItem("wc26_user");
   // Wait briefly for listeners to fire then fetch API results
   setTimeout(async () => {
@@ -648,9 +662,9 @@ function renderApp() {
   <div class="header">
     <div class="logo">⚽ <span>WC</span> 2026</div>
     <nav class="nav">
-      ${["today","history","board","admin"].map(t=>`
+      ${["today","history","board","picks","admin"].map(t=>`
         <button class="nav-btn ${S.tab===t?"active":""}" data-tab="${t}">
-          ${{today:"Today",history:"History",board:"Board",admin:"Admin"}[t]}
+          ${{today:"Matches",history:"Results",board:"Board",picks:"🏆 Picks",admin:"Admin"}[t]}
         </button>`).join("")}
     </nav>
     <div class="user-chip">
@@ -663,6 +677,7 @@ function renderApp() {
     ${S.tab==="today"  ?renderToday()  :""}
     ${S.tab==="history"?renderHistory():""}
     ${S.tab==="board"  ?renderBoard()  :""}
+    ${S.tab==="picks"  ?renderPicks()  :""}
     ${S.tab==="admin"  ?renderAdmin()  :""}
   </div>
   ${S.toast?`<div class="toast">${S.toast}</div>`:""}`;
@@ -752,61 +767,76 @@ function renderMatchCard(m) {
   </div>`;
 }
 
-function renderHistory() {
-  const preds=S.predictions[S.me]||{};
-  const items=Object.entries(preds).map(([mid,pred])=>{
-    const match=allMatches().find(m=>m.id===Number(mid));
-    const res=S.results[mid];
-    let outcome="pending",pts=0;
-    if(res){
-      const pw=winner(pred.h,pred.a), rw=winner(res.h,res.a);
-      const exact=String(pred.h)===String(res.h)&&String(pred.a)===String(res.a);
-      if(exact){ pts=7; outcome="exact"; }
-      else if(pw===rw){ pts=3; outcome="correct"; }
-      else { pts=0; outcome="wrong"; }
-    }
-    return {mid,match,pred,res,outcome,pts};
-  }).sort((a,b)=>(b.match?.date||"")>(a.match?.date||"")?1:-1);
+function getOutcome(pred, res) {
+  if (!pred || !res) return {pts:0, outcome:"pending"};
+  const pw=winner(pred.h,pred.a), rw=winner(res.h,res.a);
+  const exact=String(pred.h)===String(res.h)&&String(pred.a)===String(res.a);
+  if(exact) return {pts:7, outcome:"exact"};
+  if(pw===rw) return {pts:3, outcome:"correct"};
+  return {pts:0, outcome:"wrong"};
+}
 
-  const totalPts=calcPoints(S.me);
-  const rank=myRank();
-  const rankLabel=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":`#${rank}`;
+function renderHistory() {
+  // Collect all match IDs that any user has predicted
+  const allPredMids = new Set();
+  const USERS = ["joni","xani","erdi"];
+  USERS.forEach(uid => Object.keys(S.predictions[uid]||{}).forEach(mid => allPredMids.add(mid)));
+
+  const items = [...allPredMids].map(mid => {
+    const match = allMatches().find(m=>m.id===Number(mid));
+    const res = S.results[mid];
+    return {mid, match, res};
+  }).filter(x=>x.match).sort((a,b)=> a.match.date > b.match.date ? -1 : 1);
+
+  function ptsBadge(pred, res) {
+    const {pts,outcome} = getOutcome(pred,res);
+    if(outcome==="pending") return `<span style="color:var(--muted)">—</span>`;
+    if(outcome==="exact") return `<span style="color:var(--gold);font-weight:800">🎯7</span>`;
+    if(outcome==="correct") return `<span style="color:var(--green);font-weight:800">✓3</span>`;
+    return `<span style="color:var(--red);font-weight:800">✗0</span>`;
+  }
+
+  function predCell(uid, mid, res) {
+    const pred = S.predictions[uid]?.[mid];
+    if(!pred) return `<span style="color:var(--muted);font-size:11px">—</span>`;
+    const {outcome} = getOutcome(pred,res);
+    const col = outcome==="exact"?"var(--gold)":outcome==="correct"?"#86efac":outcome==="wrong"?"var(--red)":"var(--green)";
+    return `<span style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:${col}">${pred.h}–${pred.a}</span>
+            <span style="display:block;font-size:11px;margin-top:1px">${ptsBadge(pred,res)}</span>`;
+  }
 
   return `
-  <div class="section-title">My Predictions</div>
-  <div class="section-sub">Total: <strong style="color:var(--green)">${totalPts} pts</strong> · Rank ${rankLabel}</div>
+  <div class="section-title">Results</div>
+  <div class="section-sub">All predictions vs actual results</div>
   ${items.length===0
-    ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No predictions yet</div><div>Head to Matches to make your first pick</div></div>`
-    :`<table class="history-table">
+    ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No predictions yet</div></div>`
+    :`<div style="overflow-x:auto">
+      <table class="history-table" style="min-width:600px">
         <thead><tr>
-          <th>Match</th>
-          <th>My Pick</th>
-          <th>Result</th>
-          <th>Pts</th>
+          <th style="text-align:center;width:36px">#</th>
+          <th style="min-width:160px">Match</th>
+          <th style="text-align:center">Joni</th>
+          <th style="text-align:center">Xani</th>
+          <th style="text-align:center">Erdi</th>
+          <th style="text-align:center">Result</th>
         </tr></thead>
         <tbody>
-          ${items.map(({mid,match,pred,res,outcome,pts})=>`
+          ${items.map(({mid,match,res}, idx)=>`
           <tr>
+            <td style="text-align:center;color:var(--muted);font-size:12px;font-weight:700">${items.length - idx}</td>
             <td>
-              <div style="font-weight:700;color:#e0ecf4;font-size:13px">${match?`${flag(match.home)} ${match.home} vs ${match.away} ${flag(match.away)}`:`Match #${mid}`}</div>
-              ${match?`<div style="color:var(--muted);font-size:11px;margin-top:2px">${match.date}</div>`:""}
+              <div style="font-weight:700;color:#e0ecf4;font-size:12px">${flag(match.home)} ${match.home} vs ${match.away} ${flag(match.away)}</div>
+              <div style="color:var(--muted);font-size:11px;margin-top:2px">${match.date}</div>
             </td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--green);white-space:nowrap">
-              ${pred.h} – ${pred.a}
-            </td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;white-space:nowrap">
-              ${res
-                ? `<span style="color:${outcome==="exact"?"var(--gold)":outcome==="correct"?"#86efac":outcome==="wrong"?"var(--red)":"var(--white)"}">${res.h} – ${res.a}</span>`
-                : `<span style="color:var(--muted);font-size:12px;font-family:'Inter',sans-serif">⏳ Pending</span>`}
-            </td>
-            <td>
-              <span class="pts-cell ${outcome}">
-                ${outcome==="exact"?"🎯 7":outcome==="correct"?"✓ 3":outcome==="wrong"?"✗ 0":"—"}
-              </span>
+            <td style="text-align:center">${predCell("joni",mid,res)}</td>
+            <td style="text-align:center">${predCell("xani",mid,res)}</td>
+            <td style="text-align:center">${predCell("erdi",mid,res)}</td>
+            <td style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white)">
+              ${res ? `${res.h}–${res.a}` : `<span style="color:var(--muted);font-size:11px;font-family:'Inter',sans-serif">⏳</span>`}
             </td>
           </tr>`).join("")}
         </tbody>
-      </table>`}`;
+      </table></div>`}`;
 }
 
 function renderBoard() {
@@ -831,6 +861,98 @@ function renderBoard() {
     <div>🎯 Predict the exact final score → <strong style="color:var(--gold)">7 pts</strong></div>
     <div>📅 Daily top scorer bonus (admin awarded) → <strong style="color:#a78bfa">+100 pts</strong></div>
     <div>🏆 Tournament winner prediction (admin awarded) → <strong style="color:#f9a8d4">+50 pts</strong></div>
+  </div>`;
+}
+
+async function savePicks() {
+  const uid = S.me;
+  const {scorers, team} = S.picksInputs;
+  const validScorers = scorers.filter(s=>s.trim());
+  if(validScorers.length===0 && !team.trim()) { toast("Fill in at least one pick"); return; }
+  const picks = S.picks || {};
+  picks[uid] = { scorers: validScorers, team: team.trim(), savedAt: new Date().toISOString() };
+  S.picks = picks;
+  await fbSet("wc26/picks", picks);
+  toast("Picks saved! 🏆");
+  render();
+}
+
+function renderPicks() {
+  const myPicks = S.picks?.[S.me] || null;
+  const allUsers = ["joni","xani","erdi"];
+  const TEAMS = [
+    "Argentina","Brazil","France","England","Germany","Spain","Portugal",
+    "Netherlands","Belgium","USA","Mexico","Canada","Colombia","Uruguay",
+    "Morocco","Japan","South Korea","Australia","Croatia","Switzerland",
+    "Norway","Scotland","Sweden","Austria","Poland","Ivory Coast","Ghana",
+    "Senegal","Tunisia","Egypt","Saudi Arabia","Iran","South Korea","Türkiye"
+  ].sort();
+
+  return `
+  <div class="section-title">🏆 Tournament Picks</div>
+  <div class="section-sub">One-time predictions — locked once submitted</div>
+
+  ${myPicks
+    ? `<div style="background:#0a1810;border:1px solid #1a3a22;border-radius:12px;padding:18px;margin-bottom:20px">
+        <div style="color:var(--green);font-weight:700;font-size:14px;margin-bottom:12px">✅ Your picks are locked in</div>
+        <div style="color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Top Scorer Picks</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          ${myPicks.scorers.map(s=>`<span style="background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);border-radius:20px;padding:4px 14px;color:var(--green);font-weight:600;font-size:13px">⚽ ${s}</span>`).join("")}
+        </div>
+        <div style="color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">World Cup Winner</div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,214,0,.1);border:1px solid rgba(255,214,0,.3);border-radius:20px;padding:6px 16px">
+          <span style="font-size:20px">${flag(myPicks.team)||"🏆"}</span>
+          <span style="color:var(--gold);font-weight:700;font-size:14px">${myPicks.team||"—"}</span>
+        </div>
+      </div>`
+    : `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+        <div style="color:#e0ecf4;font-size:14px;font-weight:700;margin-bottom:16px">Zgjedh tre lojtarë që mund të jenë Top Scorer</div>
+        ${[0,1,2].map(i=>`
+          <div style="margin-bottom:10px">
+            <label class="field-label" style="font-size:11px">Player ${i+1}</label>
+            <input class="field-input" id="scorer-${i}" placeholder="e.g. Messi, Mbappé, Haaland..."
+              value="${S.picksInputs.scorers[i]||""}"
+              style="margin-bottom:0"/>
+          </div>`).join("")}
+        <div style="margin-top:16px;margin-bottom:16px">
+          <div style="color:#e0ecf4;font-size:14px;font-weight:700;margin-bottom:10px">Which team will win the World Cup?</div>
+          <select id="team-pick" class="field-input" style="margin-bottom:0;cursor:pointer">
+            <option value="">— Select a team —</option>
+            ${TEAMS.map(t=>`<option value="${t}" ${S.picksInputs.team===t?"selected":""}>${flag(t)} ${t}</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn-primary" id="save-picks-btn" style="margin-top:4px">🔒 Lock In My Picks</button>
+      </div>`}
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;color:#e0ecf4">Everyone's Picks</div>
+    </div>
+    <table class="history-table" style="width:100%">
+      <thead><tr>
+        <th></th>
+        <th style="text-align:center">Top Scorers</th>
+        <th style="text-align:center">WC Winner</th>
+      </tr></thead>
+      <tbody>
+        ${allUsers.map(uid=>{
+          const p = S.picks?.[uid];
+          return `<tr>
+            <td style="font-weight:700;color:#e0ecf4;font-size:13px">${S.users[uid]?.username||uid}</td>
+            <td style="text-align:center">
+              ${p?.scorers?.length
+                ? p.scorers.map(s=>`<div style="font-size:12px;color:var(--green);font-weight:600">⚽ ${s}</div>`).join("")
+                : `<span style="color:var(--muted);font-size:12px">Not picked yet</span>`}
+            </td>
+            <td style="text-align:center">
+              ${p?.team
+                ? `<div style="font-size:13px;font-weight:700;color:var(--gold)">${flag(p.team)} ${p.team}</div>`
+                : `<span style="color:var(--muted);font-size:12px">Not picked yet</span>`}
+            </td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
   </div>`;
 }
 
@@ -929,6 +1051,17 @@ function attachEvents() {
   document.querySelectorAll(".admin-save-btn[data-save-result]").forEach(btn=>btn.addEventListener("click",()=>saveResult(btn.dataset.saveResult)));
   document.querySelectorAll(".bonus-input[data-bonus-uid]").forEach(inp=>inp.addEventListener("input",e=>{S.bonusInputs[e.target.dataset.bonusUid]=e.target.value;}));
   document.querySelectorAll(".bonus-btn[data-award-bonus]").forEach(btn=>btn.addEventListener("click",()=>saveBonus(btn.dataset.awardBonus)));
+  // Picks tab
+  document.getElementById("save-picks-btn")?.addEventListener("click", savePicks);
+  [0,1,2].forEach(i => {
+    document.getElementById(`scorer-${i}`)?.addEventListener("input", e => {
+      S.picksInputs.scorers[i] = e.target.value;
+    });
+  });
+  document.getElementById("team-pick")?.addEventListener("change", e => {
+    S.picksInputs.team = e.target.value;
+  });
+
   document.getElementById("ko-add-btn")?.addEventListener("click",()=>{
     const date=document.getElementById("ko-date")?.value;
     const home=document.getElementById("ko-home")?.value?.trim();
