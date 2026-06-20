@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v11</title>
+<title>WC 2026 Predictor v12</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -535,30 +535,35 @@ async function init() {
   await fbSet("wc26/users", SEED_USERS);
   await fbSet("wc26/results", {data: SEED_RESULTS});
 
-  // Build cleaned predictions — remove matches 25,26,27,28 from ALL users
-  // (Czechia/SA, Switzerland/Bosnia, Canada/Qatar, Mexico/SouthKorea)
-  // Xani never predicted these, removing from everyone to equalise match count
+  // ALWAYS force-remove matches 25,26,27,28 from ALL users in Firebase
+  // These are: Czechia/SA(25), Switzerland/Bosnia(26), Canada/Qatar(27), Mexico/SKorea(28)
   const REMOVE_MIDS = ["25","26","27","28"];
-  const cleanedPreds = JSON.parse(JSON.stringify(SEED_PREDICTIONS));
-  Object.keys(cleanedPreds).forEach(uid => {
-    REMOVE_MIDS.forEach(mid => { delete cleanedPreds[uid][mid]; });
-  });
-  await fbSet("wc26/predictions", cleanedPreds);
-  // Also read live Firebase predictions and strip those matches too
   const liveSnap = await getDoc(doc(db,"wc26","predictions"));
-  if (liveSnap.exists()) {
-    const livePreds = liveSnap.data();
-    let changed = false;
-    Object.keys(livePreds).forEach(uid => {
-      REMOVE_MIDS.forEach(mid => {
-        if (livePreds[uid]?.[mid]) { delete livePreds[uid][mid]; changed = true; }
-      });
+  const livePreds = liveSnap.exists() ? liveSnap.data() : {};
+  // Merge seed predictions in (without the 4 removed matches)
+  const mergedPreds = {...livePreds};
+  Object.keys(SEED_PREDICTIONS).forEach(uid => {
+    if (!mergedPreds[uid]) mergedPreds[uid] = {};
+    Object.keys(SEED_PREDICTIONS[uid]).forEach(mid => {
+      if (!REMOVE_MIDS.includes(mid)) {
+        if (!mergedPreds[uid][mid]) mergedPreds[uid][mid] = SEED_PREDICTIONS[uid][mid];
+      }
     });
-    if (changed) {
-      await setDoc(doc(db,"wc26","predictions"), livePreds);
-      console.log("✅ Removed matches 25,26,27,28 from all users in Firebase");
-    }
-  }
+  });
+  // Now strip the 4 matches from every user no matter what
+  let cleaned = false;
+  Object.keys(mergedPreds).forEach(uid => {
+    REMOVE_MIDS.forEach(mid => {
+      if (mergedPreds[uid]?.[mid]) {
+        delete mergedPreds[uid][mid];
+        cleaned = true;
+        console.log(\`🗑️ Removed match \${mid} from \${uid}\`);
+      }
+    });
+  });
+  await setDoc(doc(db,"wc26","predictions"), mergedPreds);
+  S.predictions = mergedPreds;
+  if (cleaned) console.log("✅ Matches 25/26/27/28 removed from all users");
   const saved = sessionStorage.getItem("wc26_user");
   // Wait briefly for listeners to fire then fetch API results
   setTimeout(async () => {
