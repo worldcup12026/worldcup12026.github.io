@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v5</title>
+<title>WC 2026 Predictor v7</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -275,17 +275,51 @@ const ADMIN_PW = "ronaldo";
 const FD_TOKEN = "488ca541cbf247b3953ce892dc9a0f11";
 
 // ── FOOTBALL-DATA.ORG AUTO RESULTS ───────────────────────────────────────────
+// Team name mapping from API names to our schedule names
+const API_TEAM_MAP = {
+  "mexico": "Mexico", "south africa": "South Africa",
+  "korea republic": "South Korea", "czechia": "Czechia", "czech republic": "Czechia",
+  "canada": "Canada", "bosnia-herzegovina": "Bosnia & Herz.", "bosnia and herzegovina": "Bosnia & Herz.",
+  "usa": "USA", "united states": "USA", "paraguay": "Paraguay",
+  "qatar": "Qatar", "switzerland": "Switzerland",
+  "brazil": "Brazil", "morocco": "Morocco",
+  "haiti": "Haiti", "scotland": "Scotland",
+  "australia": "Australia", "türkiye": "Türkiye", "turkey": "Türkiye",
+  "germany": "Germany", "curaçao": "Curaçao", "curacao": "Curaçao",
+  "côte d'ivoire": "Ivory Coast", "ivory coast": "Ivory Coast",
+  "ecuador": "Ecuador", "sweden": "Sweden", "tunisia": "Tunisia",
+  "netherlands": "Netherlands", "japan": "Japan",
+  "spain": "Spain", "cape verde": "Cape Verde",
+  "belgium": "Belgium", "egypt": "Egypt",
+  "saudi arabia": "Saudi Arabia", "uruguay": "Uruguay",
+  "iran": "Iran", "new zealand": "New Zealand",
+  "france": "France", "senegal": "Senegal",
+  "iraq": "Iraq", "norway": "Norway",
+  "argentina": "Argentina", "algeria": "Algeria",
+  "austria": "Austria", "jordan": "Jordan",
+  "portugal": "Portugal", "congo dr": "Congo DR", "dr congo": "Congo DR",
+  "england": "England", "croatia": "Croatia",
+  "ghana": "Ghana", "panama": "Panama",
+  "uzbekistan": "Uzbekistan", "colombia": "Colombia",
+};
+
+function normalizeTeam(name) {
+  const lower = (name||"").toLowerCase().trim();
+  return API_TEAM_MAP[lower] || name;
+}
+
 async function fetchAndUpdateResults() {
   try {
-    // Use allorigins proxy to bypass CORS on free tier
-    const url = `https://api.football-data.org/v4/competitions/WC/matches?season=2026&status=FINISHED`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxyUrl, {
-      headers: { "X-Auth-Token": FD_TOKEN }
-    });
-    if (!resp.ok) return;
-    const outer = await resp.json();
-    const data = JSON.parse(outer.contents);
+    // Direct call — football-data.org supports CORS from browsers
+    const resp = await fetch(
+      "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+      { headers: { "X-Auth-Token": FD_TOKEN } }
+    );
+    if (!resp.ok) {
+      console.warn("API response not OK:", resp.status);
+      return;
+    }
+    const data = await resp.json();
     if (!data.matches || !data.matches.length) return;
 
     let updated = false;
@@ -295,32 +329,34 @@ async function fetchAndUpdateResults() {
       const awayGoals = m.score?.fullTime?.away;
       if (homeGoals === null || homeGoals === undefined) continue;
 
-      // Match by team names against our schedule
-      const homeName = m.homeTeam?.name || "";
-      const awayName = m.awayTeam?.name || "";
+      const homeName = normalizeTeam(m.homeTeam?.name);
+      const awayName = normalizeTeam(m.awayTeam?.name);
+
       const match = allMatches().find(gm =>
-        (gm.home.toLowerCase().includes(homeName.split(" ")[0].toLowerCase()) ||
-         homeName.toLowerCase().includes(gm.home.split(" ")[0].toLowerCase())) &&
-        (gm.away.toLowerCase().includes(awayName.split(" ")[0].toLowerCase()) ||
-         awayName.toLowerCase().includes(gm.away.split(" ")[0].toLowerCase()))
+        gm.home === homeName && gm.away === awayName
       );
-      if (!match) continue;
+      if (!match) {
+        console.log("No schedule match for:", homeName, "vs", awayName);
+        continue;
+      }
       const mid = String(match.id);
-      const newRes = {h: String(homeGoals), a: String(awayGoals)};
-      // Only update if result changed
-      if (!S.results[mid] ||
-          S.results[mid].h !== newRes.h ||
-          S.results[mid].a !== newRes.a) {
-        S.results[mid] = newRes;
+      const newH = String(homeGoals);
+      const newA = String(awayGoals);
+      if (!S.results[mid] || S.results[mid].h !== newH || S.results[mid].a !== newA) {
+        S.results[mid] = {h: newH, a: newA};
         updated = true;
+        console.log("Updated result:", homeName, newH, "-", newA, awayName);
       }
     }
     if (updated) {
       await fbSet("wc26/results", {data: S.results});
-      console.log("Results auto-updated from API");
+      console.log("✅ Firebase updated with latest results");
+      render();
+    } else {
+      console.log("No new results to update");
     }
   } catch(e) {
-    console.warn("API fetch failed, using manual results:", e.message);
+    console.warn("API fetch failed:", e.message);
   }
 }
 
@@ -338,10 +374,24 @@ const SEED_RESULTS = {
   "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay
   "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland
   "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco
+  "7":  {h:"0",a:"1"},  // Haiti 0-1 Scotland
+  "8":  {h:"2",a:"0"},  // Australia 2-0 Türkiye
+  "9":  {h:"7",a:"1"},  // Germany 7-1 Curaçao
+  "10": {h:"2",a:"2"},  // Netherlands 2-2 Japan
   "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador
   "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia
   "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde
-  "14": {h:"7",a:"4"},  // Belgium 7-4 Egypt
+  "14": {h:"1",a:"1"},  // Belgium 1-1 Egypt FIXED
+  "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay
+  "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand
+  "17": {h:"3",a:"1"},  // France 3-1 Senegal
+  "18": {h:"1",a:"4"},  // Iraq 1-4 Norway
+  "19": {h:"3",a:"0"},  // Argentina 3-0 Algeria
+  "20": {h:"3",a:"1"},  // Austria 3-1 Jordan
+  "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR
+  "22": {h:"4",a:"2"},  // England 4-2 Croatia
+  "23": {h:"1",a:"0"},  // Ghana 1-0 Panama
+  "24": {h:"1",a:"3"},  // Uzbekistan 1-3 Colombia
 };
 
 const SEED_PREDICTIONS = {
@@ -376,14 +426,16 @@ function calcPoints(uid) {
   for (const [mid, pred] of Object.entries(preds)) {
     const res = S.results[mid];
     if (!res) continue;
+    // winner() returns "h" (home win), "a" (away win), or "d" (draw)
     const pw = winner(pred.h, pred.a);
-    const rw = winner(res.h, res.a);
+    const rw = winner(res.h,  res.a);
     const exactScore = String(pred.h)===String(res.h) && String(pred.a)===String(res.a);
     if (exactScore) {
-      pts += 7; // exact score = 7 pts total (not 3+7)
+      pts += 7;  // exact score → 7 pts (covers winner too, no need to add 3)
     } else if (pw === rw) {
-      pts += 3; // correct winner/draw only = 3 pts
+      pts += 3;  // correct outcome only (right winner or right draw) → 3 pts
     }
+    // wrong outcome → 0 pts
   }
   return pts + (S.bonuses[uid] || 0);
 }
@@ -696,10 +748,10 @@ function renderHistory() {
     let outcome="pending",pts=0;
     if(res){
       const pw=winner(pred.h,pred.a), rw=winner(res.h,res.a);
-      const exactScore=String(pred.h)===String(res.h)&&String(pred.a)===String(res.a);
-      if(exactScore){ pts=7; outcome="exact"; }
+      const exact=String(pred.h)===String(res.h)&&String(pred.a)===String(res.a);
+      if(exact){ pts=7; outcome="exact"; }
       else if(pw===rw){ pts=3; outcome="correct"; }
-      else outcome="wrong";
+      else { pts=0; outcome="wrong"; }
     }
     return {mid,match,pred,res,outcome,pts};
   }).sort((a,b)=>(b.match?.date||"")>(a.match?.date||"")?1:-1);
@@ -712,28 +764,32 @@ function renderHistory() {
   <div class="section-title">My Predictions</div>
   <div class="section-sub">Total: <strong style="color:var(--green)">${totalPts} pts</strong> · Rank ${rankLabel}</div>
   ${items.length===0
-    ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No predictions yet</div><div>Head to Today to make your first pick</div></div>`
+    ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No predictions yet</div><div>Head to Matches to make your first pick</div></div>`
     :`<table class="history-table">
         <thead><tr>
           <th>Match</th>
-          <th>Your Pick</th>
+          <th>My Pick</th>
           <th>Result</th>
-          <th>Points</th>
+          <th>Pts</th>
         </tr></thead>
         <tbody>
           ${items.map(({mid,match,pred,res,outcome,pts})=>`
           <tr>
             <td>
-              <div style="font-weight:700;color:#e0ecf4">${match?`${flag(match.home)} ${match.home} vs ${match.away} ${flag(match.away)}`:`Match #${mid}`}</div>
+              <div style="font-weight:700;color:#e0ecf4;font-size:13px">${match?`${flag(match.home)} ${match.home} vs ${match.away} ${flag(match.away)}`:`Match #${mid}`}</div>
               ${match?`<div style="color:var(--muted);font-size:11px;margin-top:2px">${match.date}</div>`:""}
             </td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--green)">${pred.h}–${pred.a}</td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white)">
-              ${res?`${res.h}–${res.a}`:`<span style="color:var(--muted);font-size:13px;font-family:'Inter',sans-serif">Pending</span>`}
+            <td style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--green);white-space:nowrap">
+              ${pred.h} – ${pred.a}
+            </td>
+            <td style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;white-space:nowrap">
+              ${res
+                ? `<span style="color:${outcome==="exact"?"var(--gold)":outcome==="correct"?"#86efac":outcome==="wrong"?"var(--red)":"var(--white)"}">${res.h} – ${res.a}</span>`
+                : `<span style="color:var(--muted);font-size:12px;font-family:'Inter',sans-serif">⏳ Pending</span>`}
             </td>
             <td>
               <span class="pts-cell ${outcome}">
-                ${outcome==="exact"?"🎯 +7":outcome==="correct"?"✓ +3":outcome==="wrong"?"✗ 0":"—"}
+                ${outcome==="exact"?"🎯 7":outcome==="correct"?"✓ 3":outcome==="wrong"?"✗ 0":"—"}
               </span>
             </td>
           </tr>`).join("")}
