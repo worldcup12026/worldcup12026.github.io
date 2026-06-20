@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v7</title>
+<title>WC 2026 Predictor v8</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -272,21 +272,22 @@ const flag = t => FLAGS[t] || "🏳️";
 const MISSING = [...GROUP_MATCHES,...[]].map(m=>[m.home,m.away]).flat().filter(t=>!FLAGS[t]);
 if(MISSING.length) console.warn("Missing flags:", [...new Set(MISSING)]);
 const ADMIN_PW = "ronaldo";
-const FD_TOKEN = "488ca541cbf247b3953ce892dc9a0f11";
+// Using TheSportsDB - free, no key, no CORS restrictions
 
-// ── FOOTBALL-DATA.ORG AUTO RESULTS ───────────────────────────────────────────
-// Team name mapping from API names to our schedule names
-const API_TEAM_MAP = {
+// ── THESPORTSDB AUTO RESULTS ─────────────────────────────────────────────────
+// Free, no API key, no CORS issues — works from any domain
+const TSDB_TEAM_MAP = {
   "mexico": "Mexico", "south africa": "South Africa",
-  "korea republic": "South Korea", "czechia": "Czechia", "czech republic": "Czechia",
-  "canada": "Canada", "bosnia-herzegovina": "Bosnia & Herz.", "bosnia and herzegovina": "Bosnia & Herz.",
-  "usa": "USA", "united states": "USA", "paraguay": "Paraguay",
+  "south korea": "South Korea", "korea republic": "South Korea",
+  "czech republic": "Czechia", "czechia": "Czechia",
+  "canada": "Canada", "bosnia and herzegovina": "Bosnia & Herz.",
+  "united states": "USA", "usa": "USA", "paraguay": "Paraguay",
   "qatar": "Qatar", "switzerland": "Switzerland",
   "brazil": "Brazil", "morocco": "Morocco",
   "haiti": "Haiti", "scotland": "Scotland",
-  "australia": "Australia", "türkiye": "Türkiye", "turkey": "Türkiye",
-  "germany": "Germany", "curaçao": "Curaçao", "curacao": "Curaçao",
-  "côte d'ivoire": "Ivory Coast", "ivory coast": "Ivory Coast",
+  "australia": "Australia", "turkey": "Türkiye", "turkiye": "Türkiye",
+  "germany": "Germany", "curacao": "Curaçao", "curaçao": "Curaçao",
+  "ivory coast": "Ivory Coast", "cote d'ivoire": "Ivory Coast",
   "ecuador": "Ecuador", "sweden": "Sweden", "tunisia": "Tunisia",
   "netherlands": "Netherlands", "japan": "Japan",
   "spain": "Spain", "cape verde": "Cape Verde",
@@ -297,66 +298,60 @@ const API_TEAM_MAP = {
   "iraq": "Iraq", "norway": "Norway",
   "argentina": "Argentina", "algeria": "Algeria",
   "austria": "Austria", "jordan": "Jordan",
-  "portugal": "Portugal", "congo dr": "Congo DR", "dr congo": "Congo DR",
+  "portugal": "Portugal", "dr congo": "Congo DR", "congo dr": "Congo DR",
   "england": "England", "croatia": "Croatia",
   "ghana": "Ghana", "panama": "Panama",
   "uzbekistan": "Uzbekistan", "colombia": "Colombia",
 };
 
 function normalizeTeam(name) {
-  const lower = (name||"").toLowerCase().trim();
-  return API_TEAM_MAP[lower] || name;
+  return TSDB_TEAM_MAP[(name||"").toLowerCase().trim()] || name;
 }
 
 async function fetchAndUpdateResults() {
   try {
-    // Direct call — football-data.org supports CORS from browsers
-    const resp = await fetch(
-      "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
-      { headers: { "X-Auth-Token": FD_TOKEN } }
-    );
-    if (!resp.ok) {
-      console.warn("API response not OK:", resp.status);
-      return;
-    }
+    // TheSportsDB League ID 4429 = FIFA World Cup, free tier, no CORS issues
+    const url = "https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=4429&s=2026";
+    const resp = await fetch(url);
+    if (!resp.ok) { console.warn("TheSportsDB not OK:", resp.status); return; }
     const data = await resp.json();
-    if (!data.matches || !data.matches.length) return;
+    const events = data.events || [];
+    if (!events.length) { console.warn("No events from TheSportsDB"); return; }
 
     let updated = false;
-    for (const m of data.matches) {
-      if (m.status !== "FINISHED") continue;
-      const homeGoals = m.score?.fullTime?.home;
-      const awayGoals = m.score?.fullTime?.away;
-      if (homeGoals === null || homeGoals === undefined) continue;
+    for (const ev of events) {
+      // Only process finished matches with scores
+      if (!ev.intHomeScore || !ev.intAwayScore) continue;
+      if (ev.strStatus !== "Match Finished" && ev.strStatus !== "FT") continue;
 
-      const homeName = normalizeTeam(m.homeTeam?.name);
-      const awayName = normalizeTeam(m.awayTeam?.name);
+      const homeName = normalizeTeam(ev.strHomeTeam);
+      const awayName = normalizeTeam(ev.strAwayTeam);
 
       const match = allMatches().find(gm =>
         gm.home === homeName && gm.away === awayName
       );
-      if (!match) {
-        console.log("No schedule match for:", homeName, "vs", awayName);
-        continue;
-      }
+      if (!match) continue;
+
       const mid = String(match.id);
-      const newH = String(homeGoals);
-      const newA = String(awayGoals);
+      const newH = String(ev.intHomeScore);
+      const newA = String(ev.intAwayScore);
+
       if (!S.results[mid] || S.results[mid].h !== newH || S.results[mid].a !== newA) {
         S.results[mid] = {h: newH, a: newA};
         updated = true;
-        console.log("Updated result:", homeName, newH, "-", newA, awayName);
+        console.log(`✅ ${homeName} ${newH}-${newA} ${awayName}`);
       }
     }
+
     if (updated) {
       await fbSet("wc26/results", {data: S.results});
       console.log("✅ Firebase updated with latest results");
       render();
     } else {
-      console.log("No new results to update");
+      console.log("ℹ️ No new results to update");
     }
   } catch(e) {
-    console.warn("API fetch failed:", e.message);
+    console.warn("TheSportsDB fetch failed:", e.message);
   }
 }
 
@@ -494,8 +489,7 @@ async function init() {
   onSnapshot(doc(db,"wc26","users"), snap => {
     if(snap.exists()) S.users=snap.data();
     else S.users={};
-    if(S.screen==="loading") checkReady();
-    else render();
+    render();
   });
   onSnapshot(doc(db,"wc26","predictions"), snap => {
     if(snap.exists()) S.predictions=snap.data(); else S.predictions={};
