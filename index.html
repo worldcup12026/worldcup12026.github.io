@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v23</title>
+<title>WC 2026 Predictor v24</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -579,13 +579,21 @@ async function init() {
   });
   // Always seed data then show login
   await fbSet("wc26/users", SEED_USERS);
-  // Merge results — only add seed results that don't exist in Firebase
+  /Merge with force-corrections for known wrong values
   const liveResSnap = await getDoc(doc(db,"wc26","results"));
   const liveRes = liveResSnap.exists() ? (liveResSnap.data().data || {}) : {};
-  const mergedRes = {...SEED_RESULTS, ...liveRes}; // live results take priority
+  // Seed fills gaps, live takes priority — then force-fix known wrong values
+  const mergedRes = {...SEED_RESULTS, ...liveRes};
+  // Force-overwrite results that were previously incorrect in Firebase
+  const FORCE_CORRECT = {
+    "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil FIXED
+    "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti FIXED
+    "49": {h:"3",a:"1"},  // Switzerland 3-1 Canada FIXED
+  };
+  Object.entries(FORCE_CORRECT).forEach(([mid,res]) => { mergedRes[mid] = res; });
   await setDoc(doc(db,"wc26","results"), {data: mergedRes});
   S.results = mergedRes;
-  console.log("✅ Results merged — " + Object.keys(mergedRes).length + " matches with results");
+  console.log("Results merged — " + Object.keys(mergedRes).length + " matches");
 
   // Fix Xani's predictions — fix Uruguay 2-8→2-0 and add missing Jordan/ArgAustria picks
   const xaniSnap = await getDoc(doc(db,"wc26","predictions"));
