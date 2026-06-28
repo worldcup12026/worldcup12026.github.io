@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v28</title>
+<title>WC 2026 Predictor v29</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -260,6 +260,30 @@ const GROUP_MATCHES = [
   {id:70, date:"2026-06-27",kickoff:"21:00",home:"Congo DR",      away:"Uzbekistan",    group:"K"},
   {id:71, date:"2026-06-27",kickoff:"21:00",home:"Algeria",       away:"Austria",       group:"J"},
   {id:72, date:"2026-06-27",kickoff:"21:00",home:"Jordan",        away:"Argentina",     group:"J"},
+
+  // ── ROUND OF 32 ──
+  // June 28
+  {id:101, date:"2026-06-28", kickoff:"21:00", home:"South Africa", away:"Canada",      group:"R32"},
+  // June 29
+  {id:102, date:"2026-06-29", kickoff:"19:00", home:"Brazil",       away:"Japan",        group:"R32"},
+  {id:103, date:"2026-06-29", kickoff:"22:30", home:"Germany",      away:"Paraguay",     group:"R32"},
+  {id:104, date:"2026-06-30", kickoff:"03:00", home:"Netherlands",  away:"Morocco",      group:"R32"},
+  // June 30
+  {id:105, date:"2026-06-30", kickoff:"19:00", home:"Ivory Coast",  away:"Norway",       group:"R32"},
+  {id:106, date:"2026-06-30", kickoff:"23:00", home:"France",       away:"Sweden",       group:"R32"},
+  {id:107, date:"2026-07-01", kickoff:"03:00", home:"Mexico",       away:"Ecuador",      group:"R32"},
+  // July 1
+  {id:108, date:"2026-07-01", kickoff:"18:00", home:"England",      away:"Congo DR",     group:"R32"},
+  {id:109, date:"2026-07-01", kickoff:"22:00", home:"Belgium",      away:"Senegal",      group:"R32"},
+  {id:110, date:"2026-07-02", kickoff:"02:00", home:"USA",          away:"Bosnia & Herz.",group:"R32"},
+  // July 2
+  {id:111, date:"2026-07-02", kickoff:"21:00", home:"Spain",        away:"Austria",      group:"R32"},
+  {id:112, date:"2026-07-03", kickoff:"02:00", home:"Portugal",     away:"Croatia",      group:"R32"},
+  {id:113, date:"2026-07-03", kickoff:"04:00", home:"Switzerland",  away:"Algeria",      group:"R32"},
+  // July 3
+  {id:114, date:"2026-07-03", kickoff:"19:00", home:"Australia",    away:"Egypt",        group:"R32"},
+  {id:115, date:"2026-07-03", kickoff:"23:00", home:"Argentina",    away:"Cape Verde",   group:"R32"},
+  {id:116, date:"2026-07-04", kickoff:"02:30", home:"Colombia",     away:"Ghana",        group:"R32"},
 ];
 
 const FLAGS = {
@@ -275,7 +299,7 @@ const FLAGS = {
   "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
   "Portugal":"🇵🇹","Congo DR":"🇨🇩","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷",
   "Ghana":"🇬🇭","Panama":"🇵🇦","Uzbekistan":"🇺🇿","Colombia":"🇨🇴",
-  "Bosnia & Herz.":"🇧🇦","Cape Verde":"🇨🇻","Ivory Coast":"🇨🇮","Curaçao":"🇨🇼","Congo DR":"🇨🇩","South Korea":"🇰🇷","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "Bosnia & Herz.":"🇧🇦","Cape Verde":"🇨🇻","Ivory Coast":"🇨🇮","Curaçao":"🇨🇼","Congo DR":"🇨🇩","South Korea":"🇰🇷","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Paraguay":"🇵🇾","Morocco":"🇲🇦","Ecuador":"🇪🇨","Algeria":"🇩🇿","Croatia":"🇭🇷","Austria":"🇦🇹","Senegal":"🇸🇳","Sweden":"🇸🇪","Egypt":"🇪🇬","Australia":"🇦🇺","Japan":"🇯🇵",
 };
 const flag = t => FLAGS[t] || "🏳️";
 // Check for missing flags
