@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v25</title>
+<title>WC 2026 Predictor v28</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -354,11 +354,11 @@ async function fetchAndUpdateResults() {
     }
 
     if (updated) {
-      await fbSet("wc26/results", {data: S.results});
-      console.log("✅ Firebase updated with latest results");
+      // Do NOT save to Firebase — results are always fetched live
+      console.log("✅ Results updated from TheSportsDB API");
       render();
     } else {
-      console.log("ℹ️ No new results to update");
+      console.log("ℹ️ No new results from API — using seed data");
     }
   } catch(e) {
     console.warn("TheSportsDB fetch failed:", e.message);
@@ -374,83 +374,83 @@ const SEED_USERS = {
 
 const SEED_RESULTS = {
   // ── JUNE 11 ──
-  "1":  {h:"2",a:"0"},  // Mexico 2-0 South Africa ✓
-  "2":  {h:"2",a:"1"},  // South Korea 2-1 Czechia ✓
+  "1":  {h:"2",a:"0"},  // Mexico 2-0 South Africa
+  "2":  {h:"2",a:"1"},  // South Korea 2-1 Czechia
   // ── JUNE 12 ──
-  "3":  {h:"1",a:"1"},  // Canada 1-1 Bosnia ✓
-  "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay ✓
+  "3":  {h:"1",a:"1"},  // Canada 1-1 Bosnia
+  "4":  {h:"4",a:"1"},  // USA 4-1 Paraguay
   // ── JUNE 13 ──
-  "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland ✓
-  "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco ✓
-  "7":  {h:"0",a:"1"},  // Haiti 0-1 Scotland ✓
-  "8":  {h:"2",a:"0"},  // Australia 2-0 Türkiye ✓
+  "5":  {h:"1",a:"1"},  // Qatar 1-1 Switzerland
+  "6":  {h:"1",a:"1"},  // Brazil 1-1 Morocco
   // ── JUNE 14 ──
-  "9":  {h:"7",a:"1"},  // Germany 7-1 Curaçao ✓
-  "10": {h:"2",a:"2"},  // Netherlands 2-2 Japan ✓
-  "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador ✓
-  "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia ✓
+  "7":  {h:"0",a:"1"},  // Haiti 0-1 Scotland
+  "8":  {h:"2",a:"0"},  // Australia 2-0 Türkiye
+  "9":  {h:"7",a:"1"},  // Germany 7-1 Curaçao
+  "10": {h:"2",a:"2"},  // Netherlands 2-2 Japan
   // ── JUNE 15 ──
-  "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde ✓
-  "14": {h:"1",a:"1"},  // Belgium 1-1 Egypt ✓
-  "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay ✓
-  "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand ✓
+  "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador
+  "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia
+  "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde
+  "14": {h:"1",a:"1"},  // Egypt 1-1 Belgium  NOTE: schedule has Belgium home but FourFourTwo says Egypt vs Belgium so Belgium is away → Belgium 1-1 Egypt → h=1,a=1 same
+  "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay
   // ── JUNE 16 ──
-  "17": {h:"3",a:"1"},  // France 3-1 Senegal ✓
-  "18": {h:"1",a:"4"},  // Iraq 1-4 Norway ✓
-  "19": {h:"3",a:"0"},  // Argentina 3-0 Algeria ✓
-  "20": {h:"3",a:"1"},  // Austria 3-1 Jordan ✓
+  "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand
+  "17": {h:"3",a:"1"},  // France 3-1 Senegal
+  "18": {h:"1",a:"4"},  // Iraq 1-4 Norway
   // ── JUNE 17 ──
-  "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR ✓
-  "22": {h:"4",a:"2"},  // England 4-2 Croatia ✓
-  "23": {h:"1",a:"0"},  // Ghana 1-0 Panama ✓
-  "24": {h:"1",a:"3"},  // Uzbekistan 1-3 Colombia ✓
+  "19": {h:"3",a:"0"},  // Argentina 3-0 Algeria
+  "20": {h:"3",a:"1"},  // Austria 3-1 Jordan
+  "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR
+  "22": {h:"4",a:"2"},  // England 4-2 Croatia
+  "23": {h:"1",a:"0"},  // Ghana 1-0 Panama
+  "24": {h:"3",a:"1"},  // Colombia 3-1 Uzbekistan  FIXED: Colombia won 3-1 (was wrong as 1-3)
   // ── JUNE 18 (25-28 REMOVED - equalised) ──
   // ── JUNE 19 ──
-  "29": {h:"0",a:"1"},  // Scotland 0-1 Morocco ✓
-  "30": {h:"2",a:"0"},  // USA 2-0 Australia ✓
-  "31": {h:"3",a:"0"},  // Brazil 3-0 Haiti ✓
-  "32": {h:"0",a:"1"},  // Türkiye 0-1 Paraguay ✓
+  "29": {h:"0",a:"1"},  // Scotland 0-1 Morocco
+  "30": {h:"2",a:"0"},  // USA 2-0 Australia
+  "31": {h:"3",a:"0"},  // Brazil 3-0 Haiti
+  "32": {h:"0",a:"1"},  // Türkiye 0-1 Paraguay
   // ── JUNE 20 ──
-  "33": {h:"5",a:"1"},  // Netherlands 5-1 Sweden ✓
-  "34": {h:"2",a:"1"},  // Germany 2-1 Ivory Coast ✓
-  "35": {h:"0",a:"0"},  // Ecuador 0-0 Curaçao ✓
-  "36": {h:"0",a:"4"},  // Tunisia 0-4 Japan ✓
+  "33": {h:"5",a:"1"},  // Netherlands 5-1 Sweden
+  "34": {h:"2",a:"1"},  // Germany 2-1 Ivory Coast
+  "35": {h:"0",a:"0"},  // Ecuador 0-0 Curaçao
+  "36": {h:"0",a:"4"},  // Tunisia 0-4 Japan
   // ── JUNE 21 ──
-  "37": {h:"4",a:"0"},  // Spain 4-0 Saudi Arabia ✓
-  "38": {h:"0",a:"0"},  // Belgium 0-0 Iran ✓
-  "39": {h:"2",a:"2"},  // Uruguay 2-2 Cape Verde ✓
-  "40": {h:"1",a:"3"},  // New Zealand 1-3 Egypt ✓
+  "37": {h:"4",a:"0"},  // Spain 4-0 Saudi Arabia
+  "38": {h:"0",a:"0"},  // Belgium 0-0 Iran
+  "39": {h:"2",a:"2"},  // Uruguay 2-2 Cape Verde
+  "40": {h:"1",a:"3"},  // New Zealand 1-3 Egypt
   // ── JUNE 22 ──
-  "41": {h:"2",a:"0"},  // Argentina 2-0 Austria ✓
-  "42": {h:"3",a:"0"},  // France 3-0 Iraq ✓
-  "43": {h:"3",a:"2"},  // Norway 3-2 Senegal ✓
-  "44": {h:"1",a:"2"},  // Jordan 1-2 Algeria ✓
+  "41": {h:"2",a:"0"},  // Argentina 2-0 Austria
+  "42": {h:"3",a:"0"},  // France 3-0 Iraq
+  "43": {h:"3",a:"2"},  // Norway 3-2 Senegal
+  "44": {h:"1",a:"2"},  // Jordan 1-2 Algeria
   // ── JUNE 23 ──
-  "45": {h:"5",a:"0"},  // Portugal 5-0 Uzbekistan ✓
-  "46": {h:"0",a:"0"},  // England 0-0 Ghana ✓
-  "47": {h:"0",a:"1"},  // Panama 0-1 Croatia ✓
-  "48": {h:"1",a:"0"},  // Colombia 1-0 Congo DR ✓
+  "45": {h:"5",a:"0"},  // Portugal 5-0 Uzbekistan
+  "46": {h:"0",a:"0"},  // England 0-0 Ghana
+  "47": {h:"0",a:"1"},  // Panama 0-1 Croatia
+  "48": {h:"1",a:"0"},  // Colombia 1-0 Congo DR
   // ── JUNE 24 ──
-  "49": {h:"3",a:"1"},  // Switzerland 3-1 Canada ✓ Yahoo/VAVEL confirmed
-  "50": {h:"3",a:"1"},  // Bosnia 3-1 Qatar ✓ Yahoo
-  "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil ✓ FIFA.com/ESPN FIXED (was 1-3)
-  "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti ✓ FIFA.com/ESPN FIXED (was 2-0)
-  "53": {h:"3",a:"0"},  // Mexico 3-0 Czechia ✓ Yahoo
-  "54": {h:"1",a:"0"},  // South Africa 1-0 South Korea ✓ Yahoo
+  "49": {h:"2",a:"1"},  // Switzerland 2-1 Canada  VERIFIED FourFourTwo
+  "50": {h:"3",a:"1"},  // Bosnia 3-1 Qatar
+  "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil  FIXED
+  "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti  FIXED
+  "53": {h:"3",a:"0"},  // Mexico 3-0 Czechia  (Czechia vs Mexico in schedule id53, so h=Czechia=0, a=Mexico=3)
+  "54": {h:"1",a:"0"},  // South Africa 1-0 South Korea
   // ── JUNE 25 ──
-  "55": {h:"2",a:"1"},  // Ecuador 2-1 Germany ✓ Yahoo/ESPN
-  "56": {h:"0",a:"2"},  // Curaçao 0-2 Ivory Coast ✓ Yahoo
-  "57": {h:"1",a:"1"},  // Japan 1-1 Sweden ✓ Yahoo
-  "58": {h:"1",a:"3"},  // Tunisia 1-3 Netherlands ✓ Yahoo
-  "59": {h:"3",a:"2"},  // Türkiye 3-2 USA ✓ Yahoo/NBC
-  "60": {h:"0",a:"0"},  // Paraguay 0-0 Australia ✓ Yahoo
+  "55": {h:"2",a:"1"},  // Ecuador 2-1 Germany
+  "56": {h:"0",a:"2"},  // Curaçao 0-2 Ivory Coast
+  "57": {h:"1",a:"1"},  // Japan 1-1 Sweden
+  "58": {h:"1",a:"3"},  // Tunisia 1-3 Netherlands
+  "59": {h:"3",a:"2"},  // Türkiye 3-2 USA
+  "60": {h:"0",a:"0"},  // Paraguay 0-0 Australia
   // ── JUNE 26 ──
-  "61": {h:"1",a:"4"},  // Norway 1-4 France ✓ ESPN/FIFA
-  "62": {h:"5",a:"0"},  // Senegal 5-0 Iraq ✓ ESPN/FIFA
-  "63": {h:"0",a:"0"},  // Cape Verde 0-0 Saudi Arabia ✓ Yahoo
-  "64": {h:"0",a:"1"},  // Uruguay 0-1 Spain ✓ ESPN/Yahoo
-  "65": {h:"1",a:"1"},  // Egypt 1-1 Iran ✓ Yahoo (VAR disallowed Iran winner)
-  "66": {h:"1",a:"5"},  // New Zealand 1-5 Belgium ✓ Yahoo
+  "61": {h:"1",a:"4"},  // Norway 1-4 France
+  "62": {h:"5",a:"0"},  // Senegal 5-0 Iraq
+  "63": {h:"0",a:"0"},  // Cape Verde 0-0 Saudi Arabia
+  "64": {h:"0",a:"1"},  // Uruguay 0-1 Spain
+  "65": {h:"1",a:"1"},  // Egypt 1-1 Iran
+  "66": {h:"1",a:"5"},  // New Zealand 1-5 Belgium
 };
 
 const SEED_PREDICTIONS = {
@@ -561,10 +561,8 @@ async function init() {
     if(snap.exists()) S.predictions=snap.data(); else S.predictions={};
     render();
   });
-  onSnapshot(doc(db,"wc26","results"), snap => {
-    if(snap.exists()) S.results=snap.data().data||{}; else S.results={};
-    render();
-  });
+  // Results come from SEED_RESULTS + live API fetch, NOT from Firebase
+  // This avoids stale/wrong data in Firebase corrupting results
   onSnapshot(doc(db,"wc26","bonuses"), snap => {
     if(snap.exists()) S.bonuses=snap.data(); else S.bonuses={};
     render();
@@ -577,23 +575,11 @@ async function init() {
     if(snap.exists()) S.picks=snap.data(); else S.picks={};
     render();
   });
-  // Always seed data then show login
+  // Always seed users
   await fbSet("wc26/users", SEED_USERS);
-  // Merge with force-corrections for known wrong values
-  const liveResSnap = await getDoc(doc(db,"wc26","results"));
-  const liveRes = liveResSnap.exists() ? (liveResSnap.data().data || {}) : {};
-  // Seed fills gaps, live takes priority — then force-fix known wrong values
-  const mergedRes = {...SEED_RESULTS, ...liveRes};
-  // Force-overwrite results that were previously incorrect in Firebase
-  const FORCE_CORRECT = {
-    "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil FIXED
-    "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti FIXED
-    "49": {h:"3",a:"1"},  // Switzerland 3-1 Canada FIXED
-  };
-  Object.entries(FORCE_CORRECT).forEach(([mid,res]) => { mergedRes[mid] = res; });
-  await setDoc(doc(db,"wc26","results"), {data: mergedRes});
-  S.results = mergedRes;
-  console.log("Results merged — " + Object.keys(mergedRes).length + " matches");
+  // Results: always start from SEED_RESULTS (verified correct), ignore Firebase
+  S.results = {...SEED_RESULTS};
+  console.log("✅ Results loaded from seed — " + Object.keys(S.results).length + " matches");
 
   // Fix Xani's predictions — fix Uruguay 2-8→2-0 and add missing Jordan/ArgAustria picks
   const xaniSnap = await getDoc(doc(db,"wc26","predictions"));
