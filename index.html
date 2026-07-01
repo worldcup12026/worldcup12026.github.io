@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>WC 2026 Predictor v29</title>
+<title>WC 2026 Predictor v33</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -150,6 +150,7 @@
     .history-table .match-col{min-width:90px;max-width:110px}
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -306,6 +307,8 @@ const flag = t => FLAGS[t] || "🏳️";
 const MISSING = [...GROUP_MATCHES,...[]].map(m=>[m.home,m.away]).flat().filter(t=>!FLAGS[t]);
 if(MISSING.length) console.warn("Missing flags:", [...new Set(MISSING)]);
 const ADMIN_PW = "ronaldo";
+// Match IDs decided by penalty shootout — shown in different color in Results tab
+const PENALTY_MATCHES = new Set(["103","104"]);
 // Using TheSportsDB - free, no key, no CORS restrictions
 
 // ── THESPORTSDB AUTO RESULTS ─────────────────────────────────────────────────
@@ -415,7 +418,7 @@ const SEED_RESULTS = {
   "11": {h:"1",a:"0"},  // Ivory Coast 1-0 Ecuador
   "12": {h:"5",a:"1"},  // Sweden 5-1 Tunisia
   "13": {h:"0",a:"0"},  // Spain 0-0 Cape Verde
-  "14": {h:"1",a:"1"},  // Egypt 1-1 Belgium  NOTE: schedule has Belgium home but FourFourTwo says Egypt vs Belgium so Belgium is away → Belgium 1-1 Egypt → h=1,a=1 same
+  "14": {h:"1",a:"1"},  // Belgium 1-1 Egypt
   "15": {h:"1",a:"1"},  // Saudi Arabia 1-1 Uruguay
   // ── JUNE 16 ──
   "16": {h:"2",a:"2"},  // Iran 2-2 New Zealand
@@ -427,8 +430,8 @@ const SEED_RESULTS = {
   "21": {h:"1",a:"1"},  // Portugal 1-1 Congo DR
   "22": {h:"4",a:"2"},  // England 4-2 Croatia
   "23": {h:"1",a:"0"},  // Ghana 1-0 Panama
-  "24": {h:"3",a:"1"},  // Colombia 3-1 Uzbekistan  FIXED: Colombia won 3-1 (was wrong as 1-3)
-  // ── JUNE 18 (25-28 REMOVED - equalised) ──
+  "24": {h:"3",a:"1"},  // Colombia 3-1 Uzbekistan
+  // ── JUNE 18 (25-28 REMOVED) ──
   // ── JUNE 19 ──
   "29": {h:"0",a:"1"},  // Scotland 0-1 Morocco
   "30": {h:"2",a:"0"},  // USA 2-0 Australia
@@ -455,11 +458,11 @@ const SEED_RESULTS = {
   "47": {h:"0",a:"1"},  // Panama 0-1 Croatia
   "48": {h:"1",a:"0"},  // Colombia 1-0 Congo DR
   // ── JUNE 24 ──
-  "49": {h:"2",a:"1"},  // Switzerland 2-1 Canada  VERIFIED FourFourTwo
+  "49": {h:"2",a:"1"},  // Switzerland 2-1 Canada ✓ Yahoo/FourFourTwo
   "50": {h:"3",a:"1"},  // Bosnia 3-1 Qatar
-  "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil  FIXED
-  "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti  FIXED
-  "53": {h:"3",a:"0"},  // Mexico 3-0 Czechia  (Czechia vs Mexico in schedule id53, so h=Czechia=0, a=Mexico=3)
+  "51": {h:"0",a:"3"},  // Scotland 0-3 Brazil ✓ FourFourTwo/Yahoo
+  "52": {h:"4",a:"2"},  // Morocco 4-2 Haiti ✓ FourFourTwo
+  "53": {h:"0",a:"3"},  // Czechia 0-3 Mexico ✓ Yahoo
   "54": {h:"1",a:"0"},  // South Africa 1-0 South Korea
   // ── JUNE 25 ──
   "55": {h:"2",a:"1"},  // Ecuador 2-1 Germany
@@ -475,6 +478,22 @@ const SEED_RESULTS = {
   "64": {h:"0",a:"1"},  // Uruguay 0-1 Spain
   "65": {h:"1",a:"1"},  // Egypt 1-1 Iran
   "66": {h:"1",a:"5"},  // New Zealand 1-5 Belgium
+  // ── JUNE 27 ──
+  "67": {h:"0",a:"2"},  // Panama 0-2 England ✓ Yahoo/CBS
+  "68": {h:"2",a:"1"},  // Croatia 2-1 Ghana ✓ Yahoo/CBS
+  "69": {h:"0",a:"0"},  // Colombia 0-0 Portugal ✓ Yahoo/CBS
+  "70": {h:"3",a:"1"},  // Congo DR 3-1 Uzbekistan ✓ Yahoo/CBS
+  "71": {h:"3",a:"3"},  // Algeria 3-3 Austria ✓ Yahoo/CBS
+  "72": {h:"0",a:"3"},  // Jordan 0-3 Argentina ✓ Yahoo/CBS
+  // ── ROUND OF 32 ── (90 min scores; penalties noted in comment)
+  "101": {h:"0",a:"1"},  // South Africa 0-1 Canada ✓ Yahoo/FourFourTwo
+  "102": {h:"2",a:"1"},  // Brazil 2-1 Japan ✓ Yahoo/FourFourTwo
+  "103": {h:"1",a:"2"},  // Germany 1-2 Paraguay (Paraguay won 4-3 pens) ✓ Yahoo/FourFourTwo
+  "104": {h:"1",a:"2"},  // Netherlands 1-2 Morocco (Morocco won 3-2 pens) ✓ ESPN/FIFA
+  "105": {h:"1",a:"2"},  // Ivory Coast 1-2 Norway ✓ ESPN/Al Jazeera
+  "106": {h:"3",a:"0"},  // France 3-0 Sweden ✓ Yahoo
+  "107": {h:"2",a:"0"},  // Mexico 2-0 Ecuador ✓ Yahoo
+  "108": {h:"2",a:"1"},  // England 2-1 Congo DR ✓ Yahoo
 };
 
 const SEED_PREDICTIONS = {
@@ -605,23 +624,28 @@ async function init() {
   S.results = {...SEED_RESULTS};
   console.log("✅ Results loaded from seed — " + Object.keys(S.results).length + " matches");
 
-  // Fix Xani's predictions — fix Uruguay 2-8→2-0 and add missing Jordan/ArgAustria picks
+  // Fix and add missing predictions for Xani and Erdi
   const xaniSnap = await getDoc(doc(db,"wc26","predictions"));
   if (xaniSnap.exists()) {
     const fixPreds = xaniSnap.data();
     let fixChanged = false;
+    // Fix Xani Uruguay 2-8 → 2-0
     if (fixPreds?.xani?.["39"]?.a === "8" || fixPreds?.xani?.["39"]?.a === 8) {
       fixPreds.xani["39"] = {h:"2", a:"0"};
       fixChanged = true;
-      console.log("✅ Fixed Xani Uruguay 2-8 → 2-0");
     }
-    // Add Xani's Jordan vs Algeria and Argentina vs Austria predictions
     if (!fixPreds?.xani) fixPreds.xani = {};
-    if (!fixPreds.xani["44"]) { fixPreds.xani["44"] = {h:"1",a:"2"}; fixChanged=true; }
-    if (!fixPreds.xani["41"]) { fixPreds.xani["41"] = {h:"2",a:"1"}; fixChanged=true; }
+    if (!fixPreds?.erdi) fixPreds.erdi = {};
+    // Xani missing predictions
+    if (!fixPreds.xani["44"]) { fixPreds.xani["44"] = {h:"1",a:"2"}; fixChanged=true; }  // Jordan vs Algeria
+    if (!fixPreds.xani["41"]) { fixPreds.xani["41"] = {h:"2",a:"1"}; fixChanged=true; }  // Argentina vs Austria
+    if (!fixPreds.xani["104"]) { fixPreds.xani["104"] = {h:"2",a:"1"}; fixChanged=true; } // Netherlands vs Morocco (Xani: 2-1)
+    if (!fixPreds.xani["105"]) { fixPreds.xani["105"] = {h:"1",a:"0"}; fixChanged=true; } // Ivory Coast vs Norway (Xani: 1-0)
+    // Erdi missing prediction
+    if (!fixPreds.erdi["104"]) { fixPreds.erdi["104"] = {h:"2",a:"0"}; fixChanged=true; } // Netherlands vs Morocco (Erdi: 2-0)
     if (fixChanged) {
       await setDoc(doc(db,"wc26","predictions"), fixPreds);
-      console.log("✅ Xani predictions fixed and updated");
+      console.log("✅ Missing predictions added for Xani and Erdi");
     }
   }
 
@@ -884,6 +908,69 @@ function renderMatchCard(m) {
   </div>`;
 }
 
+function downloadResultsExcel() {
+  const USERS = ["joni","xani","erdi"];
+  const allPredMids = new Set();
+  USERS.forEach(uid => Object.keys(S.predictions[uid]||{}).forEach(mid => allPredMids.add(mid)));
+
+  const rows = [...allPredMids].map(mid => {
+    const match = allMatches().find(m => m.id === Number(mid));
+    const res = S.results[mid];
+    const row = {
+      "#": "",
+      "Match": match ? `${match.home} vs ${match.away}` : `Match #${mid}`,
+      "Date": match ? match.date : "",
+      "Group": match ? match.group : "",
+    };
+    USERS.forEach(uid => {
+      const pred = S.predictions[uid]?.[mid];
+      const uname = S.users[uid]?.username || uid;
+      row[`${uname} Pick`] = pred ? `${pred.h}-${pred.a}` : "-";
+      const {pts, outcome} = getOutcome(pred, res);
+      row[`${uname} Pts`] = outcome === "pending" ? "-" : String(pts);
+    });
+    row["Result"] = res ? `${res.h}-${res.a}` : "Pending";
+    return row;
+  }).filter(r => r.Match)
+    .sort((a,b) => a.Date > b.Date ? -1 : 1);
+
+  // Add row numbers bottom-up (match 1 at bottom)
+  const total = rows.length;
+  rows.forEach((r,i) => { r["#"] = total - i; });
+
+  // Add totals row
+  const totalsRow = { "#": "", "Match": "TOTAL POINTS", "Date": "", "Group": "" };
+  USERS.forEach(uid => {
+    const uname = S.users[uid]?.username || uid;
+    totalsRow[`${uname} Pick`] = "";
+    totalsRow[`${uname} Pts`] = String(calcPoints(uid));
+  });
+  totalsRow["Result"] = "";
+  rows.push(totalsRow);
+
+  // Build worksheet
+  const ws = XLSX.utils.json_to_sheet(rows, {
+    header: ["#","Match","Date","Group",
+      ...["joni","xani","erdi"].flatMap(uid => {
+        const uname = S.users[uid]?.username || uid;
+        return [`${uname} Pick`, `${uname} Pts`];
+      }),
+      "Result"
+    ]
+  });
+
+  // Column widths
+  ws["!cols"] = [
+    {wch:4},{wch:28},{wch:12},{wch:8},
+    {wch:12},{wch:8},{wch:12},{wch:8},{wch:12},{wch:8},
+    {wch:10}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "WC2026 Results");
+  XLSX.writeFile(wb, "WC2026_Results.xlsx");
+}
+
 function getOutcome(pred, res) {
   if (!pred || !res) return {pts:0, outcome:"pending"};
   const pw=winner(pred.h,pred.a), rw=winner(res.h,res.a);
@@ -925,6 +1012,10 @@ function renderHistory() {
   return `
   <div class="section-title">Results</div>
   <div class="section-sub">All predictions vs actual results</div>
+  <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:8px;padding:7px 14px;margin-bottom:14px">
+    <span style="font-size:13px;font-weight:700;color:#fb923c">PEN</span>
+    <span style="font-size:12px;color:var(--muted)">= Result decided by penalty shootout</span>
+  </div>
   ${items.length===0
     ?`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No predictions yet</div></div>`
     :`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px">
@@ -948,12 +1039,19 @@ function renderHistory() {
             <td style="text-align:center">${predCell("joni",mid,res)}</td>
             <td style="text-align:center">${predCell("xani",mid,res)}</td>
             <td style="text-align:center">${predCell("erdi",mid,res)}</td>
-            <td style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white)">
-              ${res ? `${res.h}–${res.a}` : `<span style="color:var(--muted);font-size:11px;font-family:'Inter',sans-serif">⏳</span>`}
+            <td style="text-align:center;white-space:nowrap">
+              ${res
+                ? PENALTY_MATCHES.has(mid)
+                  ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#fb923c">${res.h}–${res.a}</span><span style="font-size:10px;background:rgba(251,146,60,.15);border:1px solid rgba(251,146,60,.4);border-radius:4px;color:#fb923c;font-weight:700;padding:1px 5px;margin-left:4px;vertical-align:middle">PEN</span>`
+                  : `<span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--white)">${res.h}–${res.a}</span>`
+                : `<span style="color:var(--muted);font-size:11px">⏳</span>`}
             </td>
           </tr>`).join("")}
         </tbody>
-      </table></div>`}`;
+      </table></div>
+      <button id="download-excel-btn" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:10px;color:#fff;cursor:pointer;font-size:14px;font-weight:700;padding:13px 0;letter-spacing:0.3px;display:flex;align-items:center;justify-content:center;gap:8px">
+        📥 Download Table
+      </button>`}`;
 }
 
 function renderBoard() {
@@ -1192,6 +1290,7 @@ function attachEvents() {
   document.querySelectorAll(".bonus-btn[data-award-bonus]").forEach(btn=>btn.addEventListener("click",()=>saveBonus(btn.dataset.awardBonus)));
   // Picks tab
   document.getElementById("save-picks-btn")?.addEventListener("click", savePicks);
+  document.getElementById("download-excel-btn")?.addEventListener("click", downloadResultsExcel);
   document.querySelectorAll(".card-pack[data-card-id]").forEach(card => {
     card.addEventListener("click", () => {
       const id = card.dataset.cardId;
